@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // WAITLIST — anyone can add, no one can read (admin only via console)
+    match /waitlist/{docId} {
+      allow create: if request.resource.data.email is string
+                    && request.resource.data.email.size() > 0;
+      allow read, update, delete: if false;
+    }
+
+    // CANDIDATURES — anyone can create, only auth users can read their own
+    match /candidatures/{docId} {
+      allow create: if request.resource.data.email is string
+                    && request.resource.data.age is number
+                    && request.resource.data.age >= 18;
+      allow read: if request.auth != null
+                  && resource.data.email == request.auth.token.email;
+      allow update, delete: if false;
+    }
+
+    // ARTISTS — anyone can read (public classement), only admin writes
+    match /artists/{docId} {
+      allow read: if true;
+      allow write: if false; // admin via console or Cloud Functions
+    }
+
+    // VOTES — auth users can create, no duplicate check here (done in app)
+    match /votes/{docId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null
+                  && resource.data.voterId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // CONTACT — anyone can create, no one can read
+    match /contact/{docId} {
+      allow create: if request.resource.data.name is string
+                    && request.resource.data.email is string
+                    && request.resource.data.message is string;
+      allow read, update, delete: if false;
+    }
+  }
+}
